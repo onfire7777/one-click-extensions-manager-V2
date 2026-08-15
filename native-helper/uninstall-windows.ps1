@@ -5,6 +5,19 @@ param(
 $installDir = Join-Path $env:LOCALAPPDATA 'OnFire Extensions Manager\native-helper'
 $pidPath = Join-Path $installDir 'http-host.pid'
 $taskName = 'OnFire Extensions Manager Popup Helper'
+$registryPaths = @(
+	'HKCU:\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.ocem.popuphost',
+	'HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.ocem.popuphost',
+	'HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\com.ocem.popuphost',
+	'HKCU:\Software\Chromium\NativeMessagingHosts\com.ocem.popuphost'
+)
+
+foreach ($registryPath in $registryPaths) {
+	if (Test-Path $registryPath) {
+		Remove-Item -Force $registryPath
+		Write-Host "[OK] Removed native messaging registry key: $registryPath"
+	}
+}
 
 if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
 	Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue

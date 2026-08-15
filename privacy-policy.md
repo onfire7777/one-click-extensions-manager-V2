@@ -1,30 +1,31 @@
-## Privacy Policy
+# Privacy Policy
 
-This Privacy Policy describes Our policies and procedures on the collection, use and disclosure of Your information when You use the Service and tells You about Your privacy rights and how the law protects You.
+Effective date: August 14, 2026
 
-**We DON'T collect any of your Your Personal data.**
+OnFire Extensions Manager helps you view, organize, enable, disable, open, and uninstall browser extensions. This policy explains the data the extension handles to provide those features.
 
-### Definitions
+## Data the extension handles
 
-For the purposes of this Privacy Policy:
+The extension reads information supplied by the browser about installed extensions, including names, identifiers, icons, enabled state, and available management actions. It also stores your OnFire preferences and organization data, such as folders and interface settings, in the browser's local extension storage.
 
-Application means the software program provided by us downloaded by You on any electronic device, named **OnFire Extensions Manager**, a modified fork of One Click Extension Manager.
+This information stays on your device. OnFire does not operate a remote server, use analytics or advertising SDKs, sell data, or transmit extension data to third parties.
 
-Device means any device that can access the Service such as a computer, a cellphone or a digital tablet.
+## Optional native helper
 
-Personal Data is any information that relates to an identified or identifiable individual.
+If you install the optional OnFire native helper, the extension communicates with that helper only on your device through Chrome's authenticated native-messaging channel. The helper is used to open a selected extension's popup. Its native-messaging manifest restricts access to the configured OnFire extension ID, and it does not send data to an external service.
 
-Service refers to the Application.
+## Permissions
 
-You means the individual accessing or using the Service, or the company, or other legal entity on behalf of which such individual is accessing or using the Service, as applicable.
+- `management` is used to list and manage extensions at your request.
+- `storage` is used to save OnFire folders and preferences locally.
+- `nativeMessaging` is used only for the optional local popup helper.
 
-### Collecting and Using Your Personal Data
+OnFire's use of information received from Chrome APIs complies with the Chrome Web Store User Data Policy, including its Limited Use requirements.
 
-#### Types of Data Collected
+## Retention and deletion
 
-**NOTHING, This is an open-source app and it doesn't collect any of your data**.
+Local settings remain until you clear the extension's data or uninstall OnFire. The optional native helper can be uninstalled separately.
 
-Contact Us
-If you have any questions about this Privacy Policy, You can contact us:
+## Contact
 
-By visiting this page: https://github.com/onfire7777/one-click-extensions-manager-V2
+Questions or privacy requests can be submitted at <https://github.com/onfire7777/one-click-extensions-manager-V2/issues>.

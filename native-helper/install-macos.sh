@@ -42,10 +42,9 @@ if [[ -z "$node_bin" ]]; then
 	exit 1
 fi
 
-mkdir -p "$install_dir" "$HOME/Library/LaunchAgents" "${manifest_dirs[@]}"
+mkdir -p "$install_dir" "${manifest_dirs[@]}"
 cp "$script_dir/native-host.mjs" "$install_dir/native-host.mjs"
-cp "$script_dir/native-http-host.mjs" "$install_dir/native-http-host.mjs"
-chmod 755 "$install_dir/native-host.mjs" "$install_dir/native-http-host.mjs"
+chmod 755 "$install_dir/native-host.mjs"
 
 install_if_changed() {
 	local source_path="$1"
@@ -112,36 +111,9 @@ for manifest_dir in "${manifest_dirs[@]}"; do
 		"$manifest_dir/com.openai.ocemtest.json"
 done
 
+# Remove the deprecated unauthenticated HTTP bridge from older installations.
 label="com.ocem.popuphost.http"
 plist_path="$HOME/Library/LaunchAgents/$label.plist"
-cat >"$plist_path" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>Label</key>
-	<string>$label</string>
-	<key>ProgramArguments</key>
-	<array>
-		<string>$node_bin</string>
-		<string>$install_dir/native-http-host.mjs</string>
-	</array>
-	<key>WorkingDirectory</key>
-	<string>$install_dir</string>
-	<key>RunAtLoad</key>
-	<true/>
-	<key>KeepAlive</key>
-	<true/>
-	<key>ProcessType</key>
-	<string>Interactive</string>
-	<key>StandardOutPath</key>
-	<string>/tmp/com.ocem.popuphost.http.log</string>
-	<key>StandardErrorPath</key>
-	<string>/tmp/com.ocem.popuphost.http.err</string>
-</dict>
-</plist>
-EOF
-
 pid_file="$install_dir/http-host.pid"
 if [[ -f "$pid_file" ]]; then
 	old_pid="$(cat "$pid_file" || true)"
@@ -149,55 +121,12 @@ if [[ -f "$pid_file" ]]; then
 		kill "$old_pid" || true
 	fi
 fi
-
-start_standalone_helper() {
-	nohup "$node_bin" "$install_dir/native-http-host.mjs" >/tmp/com.ocem.popuphost.http.log 2>/tmp/com.ocem.popuphost.http.err &
-	echo "$!" >"$pid_file"
-	echo "Started local helper with nohup fallback."
-}
-
-wait_for_health() {
-	"$node_bin" <<'NODE'
-const deadline = Date.now() + 5000;
-let lastError = '';
-while (Date.now() < deadline) {
-	try {
-		const response = await fetch('http://127.0.0.1:17645/health');
-		if (response.ok) {
-			process.exit(0);
-		}
-
-		lastError = `HTTP ${response.status}`;
-	} catch (error) {
-		lastError = error.message;
-	}
-
-	await new Promise(resolve => {
-		setTimeout(resolve, 250);
-	});
-}
-throw new Error(`Local helper health check failed: ${lastError}`);
-NODE
-}
-
 if command -v launchctl >/dev/null 2>&1; then
 	gui_domain="gui/$(id -u)"
 	launchctl bootout "$gui_domain" "$plist_path" >/dev/null 2>&1 || true
 	launchctl bootout "$gui_domain/$label" >/dev/null 2>&1 || true
 fi
-
-if command -v launchctl >/dev/null 2>&1; then
-	if launchctl bootstrap "$gui_domain" "$plist_path" >/dev/null 2>&1; then
-		launchctl kickstart -k "$gui_domain/$label" >/dev/null 2>&1 || true
-		echo "Started local helper LaunchAgent: $label"
-	else
-		start_standalone_helper
-	fi
-else
-	start_standalone_helper
-fi
-
-wait_for_health
+rm -f "$plist_path" "$pid_file" "$install_dir/native-http-host.mjs"
 
 echo "Installed native popup helper."
 echo "Native host manifests:"
@@ -205,4 +134,4 @@ for manifest_dir in "${manifest_dirs[@]}"; do
 	echo "- $manifest_dir/com.ocem.popuphost.json"
 done
 echo "Installed helper: $install_dir"
-echo "Local helper: http://127.0.0.1:17645/open-extension-popup"
+echo "Transport: Chrome native messaging (extension-ID restricted)"

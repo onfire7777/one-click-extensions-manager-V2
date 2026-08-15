@@ -55,8 +55,6 @@ The macOS installer writes:
 - Native messaging manifest: `~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/com.ocem.popuphost.json`
 - Helper files: `~/.local/share/one-click-extensions-manager/native-helper`
 - Browser profile path used by diagnostics: `~/Library/Application Support/BraveSoftware/Brave-Browser/Default`
-- Local fallback server: `http://127.0.0.1:17645/open-extension-popup`
-- Local helper PID: `~/.local/share/one-click-extensions-manager/native-helper/http-host.pid`
 
 The helper directory intentionally keeps the legacy `one-click-extensions-manager`
 path so existing native-host installs continue to work after upgrading this
@@ -76,14 +74,12 @@ The Windows installer writes:
 
 - Helper files: `%LOCALAPPDATA%\OnFire Extensions Manager\native-helper`
 - Helper config: `%LOCALAPPDATA%\OnFire Extensions Manager\native-helper\native-host-config.json`
-- Per-user scheduled task: `OnFire Extensions Manager Popup Helper`
-- Local helper: `http://127.0.0.1:17645/open-extension-popup`
+- Native messaging manifest: `%LOCALAPPDATA%\OnFire Extensions Manager\native-helper\com.ocem.popuphost.json`
+- Per-user native messaging registry key for the selected browser
 
-The scheduled task runs at user logon and does not require administrator rights.
-
-The macOS native messaging manifest restricts access to the installed manager
-extension ID. The local helper server on both platforms also rejects requests
-whose `Origin` is not that extension.
+The native messaging manifest restricts access to the installed manager extension
+ID. The helper is launched on demand by the browser and does not listen on a
+network port or run continuously.
 
 If macOS reports that `osascript` is not allowed assistive access, grant Accessibility permission to the app running the helper or reinstall the helper from a terminal/Codex session that already has Accessibility permission.
 Normal popup requests check Accessibility access silently so Brave does not show a permission prompt on every click. If macOS reports that `native-host` or `native-clicker` needs Accessibility access, run the explicit prompt command once:

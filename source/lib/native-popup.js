@@ -1,7 +1,5 @@
 export const nativeHostName = 'com.ocem.popuphost';
 
-const localHelperUrl = 'http://127.0.0.1:17645/open-extension-popup';
-
 export class PopupHelperError extends Error {
 	constructor(message, details = []) {
 		super(message);
@@ -49,37 +47,6 @@ function sendNativeMessage(payload) {
 	});
 }
 
-async function postLocalHelper(payload) {
-	const controller = new AbortController();
-	const timeout = setTimeout(() => {
-		controller.abort();
-	}, 5000);
-
-	try {
-		const response = await fetch(localHelperUrl, {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-			},
-			body: JSON.stringify(payload),
-			signal: controller.signal,
-		});
-
-		const data = await response.json().catch(() => ({}));
-		if (!response.ok) {
-			throw new Error(
-				data.error || `Local helper failed with HTTP ${response.status}`,
-			);
-		}
-
-		return data;
-	} catch (error) {
-		throw new Error('Local native helper request failed.', {cause: error});
-	} finally {
-		clearTimeout(timeout);
-	}
-}
-
 function assertOkResponse(response, transport) {
 	if (response?.ok) {
 		return response;
@@ -114,7 +81,6 @@ export async function openNativePopup({
 		['native messaging', () => sendNativeMessage(payload)],
 		['background bridge', () => sendRuntimeMessage(payload)],
 		['external background bridge', () => sendRuntimeMessage(payload, true)],
-		['local helper', () => postLocalHelper(payload)],
 	];
 	const failures = [];
 

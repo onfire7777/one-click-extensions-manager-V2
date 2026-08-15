@@ -7,20 +7,16 @@
 	"homepage_url": "https://github.com/onfire7777/one-click-extensions-manager-V2",
 	"default_locale": "en",
 	"permissions": ["management", "storage", "nativeMessaging"],
-	"host_permissions": ["http://127.0.0.1:17645/*"],
 	"minimum_chrome_version": "110",
 	"icons": {
-		"16": "onfire-logo.svg",
-		"48": "onfire-logo.svg",
-		"128": "onfire-logo.svg"
+		"16": "onfire-logo.png",
+		"48": "onfire-logo.png",
+		"128": "onfire-logo.png"
 	},
 	"action": {
 		"default_title": "OnFire Extensions Manager",
 		"default_icon": "onfire-logo.svg",
 		"default_popup": "index.html"
-	},
-	"side_panel": {
-		"default_path": "index.html"
 	},
 	"options_page": "options/options.html",
 	"background": {

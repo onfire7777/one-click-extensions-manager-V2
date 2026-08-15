@@ -9,14 +9,16 @@ env:
 name: Release
 on:
   workflow_dispatch: null
+permissions:
+  contents: read
 jobs:
   Version:
-    outputs:
-      created: ${{ env.DAILY_VERSION_CREATED }}
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: package.json
           cache: npm
@@ -24,15 +26,15 @@ jobs:
       - name: Test and build
         run: npm test
       - name: Create tag if necessary
-        uses: fregante/daily-version-action@v2
+        uses: fregante/daily-version-action@fb1a60b7c4daf1410cd755e360ebec3901e58588 # v2
         with:
           prefix: 20 # Use YYYY.M.D instead of YY.M.D
       - name: Update manifest.json with version ${{ env.DAILY_VERSION}}
         if: env.DAILY_VERSION_CREATED
-        run: npx dot-json@1 "$DIRECTORY/manifest.json" version "$DAILY_VERSION"
-      - name: Ready for "submit" jobs
+        run: node -e "const fs=require('node:fs');const p=process.env.DIRECTORY+'/manifest.json';const m=JSON.parse(fs.readFileSync(p));m.version=process.env.DAILY_VERSION;fs.writeFileSync(p,JSON.stringify(m,null,'\t')+'\n')"
+      - name: Upload release artifact
         if: env.DAILY_VERSION_CREATED
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           path: ${{ env.DIRECTORY }}
       - name: Create release
@@ -41,38 +43,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{ env.DIRECTORY }}
         run: |
-          FILENAME="$PROJECT_NAME-$DAILY_VERSION-for-local-testing-only.zip"
+          FILENAME="$PROJECT_NAME-$DAILY_VERSION.zip"
           zip -r "$FILENAME" ./*
           gh release create "$DAILY_VERSION" --generate-notes "$FILENAME"
-  Chrome:
-    if: needs.Version.outputs.created
-    needs: Version
-    name: Submit (Chrome)
-    environment: Chrome
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-      - run: npx chrome-webstore-upload-cli@3
-        working-directory: artifact
-        env:
-          EXTENSION_ID: ${{ secrets.EXTENSION_ID }}
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-  Edge:
-    if: needs.Version.outputs.created
-    needs: Version
-    name: Submit (Edge)
-    environment: Edge
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-      - name: Create zip for Edge store
-        working-directory: artifact
-        run: zip -r extension.zip ./*
-      - run: npx edge-webstore-upload@latest workflow extension.zip
-        working-directory: artifact
-        env:
-          CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
-          API_KEY: ${{ secrets.EDGE_API_KEY }}
-          PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}

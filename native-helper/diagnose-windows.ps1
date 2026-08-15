@@ -5,50 +5,33 @@ param(
 
 $installDir = Join-Path $env:LOCALAPPDATA 'OnFire Extensions Manager\native-helper'
 $configPath = Join-Path $installDir 'native-host-config.json'
-$taskName = 'OnFire Extensions Manager Popup Helper'
-
-function Write-Check {
-	param(
-		[bool] $Ok,
-		[string] $Message
-	)
-
-	if ($Ok) {
-		Write-Host "[OK] $Message"
-	} else {
-		Write-Host "[FAIL] $Message"
-	}
+$manifestPath = Join-Path $installDir 'com.ocem.popuphost.json'
+$registryPaths = @{
+	brave = 'HKCU:\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.ocem.popuphost'
+	chrome = 'HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.ocem.popuphost'
+	edge = 'HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\com.ocem.popuphost'
+	chromium = 'HKCU:\Software\Chromium\NativeMessagingHosts\com.ocem.popuphost'
 }
 
-$node = Get-Command node -ErrorAction SilentlyContinue
-Write-Check ([bool] $node) 'Node.js is available'
+function Write-Check {
+	param([bool] $Ok, [string] $Message)
+	if ($Ok) { Write-Host "[OK] $Message" } else { Write-Host "[FAIL] $Message" }
+}
+
+Write-Check ([bool](Get-Command node -ErrorAction SilentlyContinue)) 'Node.js is available'
 Write-Check (Test-Path (Join-Path $installDir 'native-host.mjs')) "Native host script exists: $installDir"
-Write-Check (Test-Path (Join-Path $installDir 'native-http-host.mjs')) 'Local helper script exists'
+Write-Check (Test-Path (Join-Path $installDir 'native-host.exe')) 'Native host launcher exists'
+Write-Check (Test-Path $manifestPath) 'Native messaging manifest exists'
 Write-Check (Test-Path $configPath) 'Native host config exists'
+Write-Check (Test-Path $registryPaths[$Browser]) "Native messaging registry key exists for $Browser"
 
 if (Test-Path $configPath) {
 	try {
 		$config = Get-Content -Raw $configPath | ConvertFrom-Json
 		Write-Check ($config.extensionId -match '^[a-p]{32}$') "Configured extension id: $($config.extensionId)"
-		if ($config.browserProcessNames) {
-			Write-Host "[OK] Browser process names: $($config.browserProcessNames -join ', ')"
-		}
 	} catch {
 		Write-Host "[FAIL] Native host config is invalid JSON: $($_.Exception.Message)"
 	}
-}
-
-$task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-Write-Check ([bool] $task) "Scheduled task exists: $taskName"
-if ($task) {
-	Write-Host "[OK] Scheduled task state: $($task.State)"
-}
-
-try {
-	$response = Invoke-RestMethod -Uri 'http://127.0.0.1:17645/health' -TimeoutSec 2
-	Write-Check ($response.ok) 'Local helper health endpoint is responding'
-} catch {
-	Write-Host "[FAIL] Local helper health endpoint failed: $($_.Exception.Message)"
 }
 
 $processNames = @{
@@ -57,7 +40,6 @@ $processNames = @{
 	edge = @('msedge')
 	chromium = @('chromium')
 }[$Browser]
-
 $browserProcess = $processNames | ForEach-Object {
 	Get-Process -Name $_ -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 }
 } | Select-Object -First 1

@@ -6,10 +6,7 @@ import {
 	nativeHostName,
 } from './native-popup.js';
 
-const originalFetch = globalThis.fetch;
-
 afterEach(() => {
-	globalThis.fetch = originalFetch;
 	delete globalThis.chrome;
 });
 
@@ -36,13 +33,11 @@ test('uses direct native messaging before fallbacks', async () => {
 			callback({ok: true, detail: 'native'});
 		},
 		runtimeMessaging() {
-			assert.fail('runtime messaging should not run after native messaging success');
+			assert.fail(
+				'runtime messaging should not run after native messaging success',
+			);
 		},
 	});
-	globalThis.fetch = async () => {
-		assert.fail('local helper should not run after native messaging success');
-	};
-
 	assert.deepEqual(
 		await openNativePopup({
 			extensionId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -53,8 +48,7 @@ test('uses direct native messaging before fallbacks', async () => {
 	);
 });
 
-test('falls back to the local helper when native transports fail', async () => {
-	const calls = [];
+test('uses the background bridge when direct native messaging fails', async () => {
 	installChromeMock({
 		nativeMessaging({callback}) {
 			chrome.runtime.lastError = {message: 'native missing'};
@@ -62,18 +56,9 @@ test('falls back to the local helper when native transports fail', async () => {
 			chrome.runtime.lastError = undefined;
 		},
 		runtimeMessaging({callback}) {
-			chrome.runtime.lastError = {message: 'background unavailable'};
-			callback();
-			chrome.runtime.lastError = undefined;
+			callback({ok: true, detail: 'background'});
 		},
 	});
-	globalThis.fetch = async (url, options) => {
-		calls.push({url, body: JSON.parse(options.body)});
-		return {
-			ok: true,
-			json: async () => ({ok: true, detail: 'local'}),
-		};
-	};
 
 	assert.deepEqual(
 		await openNativePopup({
@@ -81,11 +66,8 @@ test('falls back to the local helper when native transports fail', async () => {
 			extensionName: 'Fallback',
 			extensionAliases: ['Fallback Long Name'],
 		}),
-		{ok: true, detail: 'local'},
+		{ok: true, detail: 'background'},
 	);
-	assert.equal(calls.length, 1);
-	assert.equal(calls[0].body.extensionName, 'Fallback');
-	assert.deepEqual(calls[0].body.extensionAliases, ['Fallback Long Name']);
 });
 
 test('reports structured failures when every transport fails', async () => {
@@ -101,12 +83,6 @@ test('reports structured failures when every transport fails', async () => {
 			chrome.runtime.lastError = undefined;
 		},
 	});
-	globalThis.fetch = async () => ({
-		ok: false,
-		status: 500,
-		json: async () => ({error: 'local failed'}),
-	});
-
 	await assert.rejects(
 		openNativePopup({
 			extensionId: 'cccccccccccccccccccccccccccccccc',
@@ -114,9 +90,8 @@ test('reports structured failures when every transport fails', async () => {
 		}),
 		error => {
 			assert.ok(error instanceof PopupHelperError);
-			assert.equal(error.details.length, 4);
+			assert.equal(error.details.length, 3);
 			assert.match(error.details.join('\n'), /native missing/v);
-			assert.match(error.details.join('\n'), /local failed/v);
 			return true;
 		},
 	);

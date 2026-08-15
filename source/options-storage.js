@@ -4,7 +4,28 @@ import {
 	normalizeActionPosition,
 } from './lib/action-mode.js';
 
+const storageName = 'options';
+
+async function migrateSyncedOptionsToLocal() {
+	const [local, synced] = await Promise.all([
+		chrome.storage.local.get(storageName),
+		chrome.storage.sync.get(storageName),
+	]);
+
+	if (local[storageName] === undefined && synced[storageName] !== undefined) {
+		await chrome.storage.local.set({[storageName]: synced[storageName]});
+	}
+
+	if (synced[storageName] !== undefined) {
+		await chrome.storage.sync.remove(storageName);
+	}
+}
+
+await migrateSyncedOptionsToLocal();
+
 const optionsStorage = new OptionsSync({
+	storageName,
+	storageType: 'local',
 	defaults: {
 		position: actionPopupPosition,
 		showButtons: 'on-demand', // Or 'always'
@@ -145,7 +166,4 @@ export async function matchOptions() {
 	}
 
 	chrome.action.setPopup({popup: defaultPopup});
-
-	chrome.sidePanel?.setOptions?.({enabled: false});
-	chrome.sidePanel?.setPanelBehavior?.({openPanelOnActionClick: false});
 }
